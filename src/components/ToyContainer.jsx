@@ -2,68 +2,68 @@ import React from 'react';
 import ToyCard from './ToyCard'
 import ToyForm from './ToyForm'
 
+const API = "http://localhost:3000/toys"
 class ToyContainer extends React.Component{
-//create an empty state of data which will be updated based on life cycle
   state = {
-    data: [],
-    display: false
+    toys: [],
+    display: false,
+    name: "",
+    image: ""
+  }
+
+  componentDidMount(){
+    this.reload()
+  }
+
+  reload(){
+    fetch(API)
+    .then(resp => resp.json())
+    .then(data => this.setState({ toys: data}))
   }
 
   handleClick = () => {
-    let newBoolean = !this.state.display
-    this.setState({
-      display: newBoolean
-    })
-  }
-
-//after this container is mounted lets fetch the initial api
-  componentDidMount(){
-    fetch('http://localhost:3000/toys')
-    .then(resp => resp.json())
-    .then(data => this.setState({data: data}))
-  }
-
-  update() {
-    fetch('http://localhost:3000/toys')
-    .then(res => res.json())
-    .then(data => this.setState({data: data}))
-  }
-  
-  donateHandler = (id) => {
-    fetch(`http://localhost:3000/toys/${id}`, { method: 'DELETE'})
-    this.update()
+    let flag = !this.state.display
+    this.setState({ display: flag})
   }
 
   likeHandler = (toyObj) => {
-    toyObj.likes += 1 
-    let settings = {
+    toyObj.likes += 1
+    const settings = {
       method: 'PATCH',
-      headers: {
-        'content-type': 'application/json',
-        'accept': 'application/json'
-      },
-      body: JSON.stringify({likes: parseInt(toyObj.likes)})
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({likes: toyObj.likes})  
     }
-    fetch(`http://localhost:3000/toys/${toyObj.id}`, settings)
+    fetch(`${API}/${toyObj.id}`, settings)
     .then(resp => resp.json())
-    .then(toyObj => {
-      let newArray = this.state.data.filter(toy => toy.id !== toyObj.id)
-      newArray = [...newArray, toyObj]
-      this.setState({data: newArray.sort((a,b) => {return a.id - b.id})})
-    })
+    this.reload()
   }
 
-  submitHandler = toyObj => {
-    console.log(toyObj)
-    let settings = {
-      method: 'POST',
-      header: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(this.state)
+  donateHandler = (toyId) => {
+    fetch(`${API}/${toyId}`, {method: "DELETE"})
+    this.reload()
+  }
+
+  changeHandler = e => {
+    this.setState({
+      [e.target.name]: e.target.value //review this cool thing
+    }, () => console.log(this.state.name))
+  }
+
+  submitHandler = e => {
+    e.preventDefault()
+    const newToyObj = {
+      name: this.state.name,
+      image: this.state.image,
+      likes: 0
     }
-    fetch('http://localhost:3000/toys', settings)
-    this.update()
+    const settings = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newToyObj)      
+    }
+    fetch(API, settings)
+    .then(resp => resp.json())
+    this.reload()
   }
 
   render(){
@@ -71,7 +71,7 @@ class ToyContainer extends React.Component{
     <>
       { this.state.display
         ?
-      <ToyForm submitHandler={this.submitHandler}/>
+      <ToyForm changeHandler={this.changeHandler} submitHandler={this.submitHandler}/>
         :
       null
     }
@@ -79,7 +79,7 @@ class ToyContainer extends React.Component{
       <button onClick={this.handleClick}> Add a Toy </button>
     </div>
       <div id="toy-collection">
-        {this.state.data.map(toyObj => <ToyCard toy={toyObj} donateHandler={this.donateHandler} likeHandler={this.likeHandler}/>)}
+        {this.state.toys.map(toyObj => <ToyCard toy={toyObj} donateHandler={this.donateHandler} likeHandler={this.likeHandler}/>)}
       </div>
     </>
     );
